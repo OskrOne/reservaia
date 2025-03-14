@@ -1,0 +1,19 @@
+{
+  "name": "reservaia",
+  "version": "1.0.0",
+  "description": "Virtual assistant to make reservations through Whatsapp",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OskrOne/reservaia.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OskrOne/reservaia/issues"
+  },
+  "homepage": "https://github.com/OskrOne/reservaia#readme"
+}
