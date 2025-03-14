@@ -8,11 +8,39 @@ service: reservaia-service
 provider:
   name: aws
   runtime: nodejs20.x
+  region: mx-central-1
+  environment:
+    THREADS_TABLE: Threads
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: 
+        - arn:aws:dynamodb:mx-central-1:*:table/Threads
 
 functions:
   hello:
-    handler: handler.processMessage
+    handler: handler.webhook
     events:
       - httpApi:
           path: /
           method: post
+
+resources:
+  Resources:
+    ThreadsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Threads
+        AttributeDefinitions:
+          - AttributeName: to
+            AttributeType: S
+          - AttributeName: from
+            AttributeType: S
+        KeySchema:
+          - AttributeName: to
+            KeyType: HASH
+          - AttributeName: from
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST

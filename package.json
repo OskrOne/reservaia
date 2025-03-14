@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/OskrOne/reservaia/issues"
   },
-  "homepage": "https://github.com/OskrOne/reservaia#readme"
+  "homepage": "https://github.com/OskrOne/reservaia#readme",
+  "devDependencies": {
+    "aws-sdk": "^2.1692.0"
+  }
 }

@@ -1,5 +1,5 @@
 
-const processMessage = async (event) => {
+const webhook = async (event) => {
   return {
     statusCode: 200,
     body: JSON.stringify({
@@ -9,4 +9,4 @@ const processMessage = async (event) => {
 }
 
 
-export { processMessage };
+export { webhook };
