@@ -152,7 +152,4 @@ const formatSlot = (time, duration) => transformEvent({
     end: time.clone().add(duration, "minutes").format(),
 });
 
-// Execute the main function
-main();
-
 module.exports = { getAvailableSlots, createEvent };

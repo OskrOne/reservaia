@@ -8,7 +8,7 @@ service: reservaia-service
 provider:
   name: aws
   runtime: nodejs20.x
-  region: mx-central-1
+  region: us-east-2
   environment:
     THREADS_TABLE: Threads
     GOOGLE_SERVICE_ACCOUNT_SECRET: GoogleServiceAccountCredentials
@@ -17,11 +17,11 @@ provider:
       Action:
         - dynamodb:GetItem
         - dynamodb:PutItem
-      Resource: 
+      Resource:
         - arn:aws:dynamodb:mx-central-1:*:table/Threads
 
 functions:
-  hello:
+  webhook:
     handler: handler.webhook
     events:
       - httpApi:
@@ -45,7 +45,6 @@ resources:
           - AttributeName: from
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
-  Resources:
     GoogleServiceAccountCredentials:
       Type: AWS::SecretsManager::Secret
       Properties:
