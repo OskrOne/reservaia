@@ -11,6 +11,7 @@ provider:
   region: mx-central-1
   environment:
     THREADS_TABLE: Threads
+    GOOGLE_SERVICE_ACCOUNT_SECRET: GoogleServiceAccountCredentials
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -44,3 +45,9 @@ resources:
           - AttributeName: from
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
+  Resources:
+    GoogleServiceAccountCredentials:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: GoogleServiceAccountCredentials
+        Description: "Stores Google Service Account credentials for authentication"
