@@ -16,12 +16,11 @@
     "url": "https://github.com/OskrOne/reservaia/issues"
   },
   "homepage": "https://github.com/OskrOne/reservaia#readme",
-  "devDependencies": {
-    "aws-sdk": "^2.1692.0"
-  },
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
     "googleapis": "^146.0.0",
     "moment": "^2.30.1",
-    "moment-timezone": "^0.5.47"
+    "moment-timezone": "^0.5.47",
+    "openai": "^4.87.3"
   }
 }

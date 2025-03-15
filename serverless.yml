@@ -11,18 +11,23 @@ provider:
   region: us-east-2
   environment:
     THREADS_TABLE: Threads
+    BUSINESSES_TABLE: Businesses
     GOOGLE_SERVICE_ACCOUNT_SECRET: GoogleServiceAccountCredentials
+    OPENAI_API_KEY: 
+    ASSISTANT_ID: 
   iamRoleStatements:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
         - dynamodb:PutItem
       Resource:
-        - arn:aws:dynamodb:mx-central-1:*:table/Threads
+        - arn:aws:dynamodb:us-east-2:*:table/Threads
+        - arn:aws:dynamodb:us-east-2:*:table/Businesses
 
 functions:
   webhook:
     handler: handler.webhook
+    timeout: 60
     events:
       - httpApi:
           path: /
@@ -44,6 +49,17 @@ resources:
             KeyType: HASH
           - AttributeName: from
             KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+    BusinessesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Businesses
+        AttributeDefinitions:
+          - AttributeName: phonenumber
+            AttributeType: S
+        KeySchema:
+          - AttributeName: phonenumber
+            KeyType: HASH
         BillingMode: PAY_PER_REQUEST
     GoogleServiceAccountCredentials:
       Type: AWS::SecretsManager::Secret
