@@ -51,7 +51,7 @@ const webhook = async (event) => {
 
         console.log(business);
 
-        const availableSlots = await getAvailableSlots(business.calendarId, 60, 9, 18, "week");
+        const availableSlots = await getAvailableSlots(business.calendarId.S, 60, 9, 18, "week");
 
         return {
             statusCode: 200,

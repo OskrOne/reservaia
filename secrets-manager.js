@@ -1,7 +1,7 @@
-const AWS = require("aws-sdk");
+const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
 
 // Initialize Secrets Manager client
-const secretsManager = new AWS.SecretsManager();
+const secretsManager = new SecretsManagerClient();
 
 /**
  * Retrieves Google Service Account credentials from AWS Secrets Manager.
@@ -11,7 +11,8 @@ const getGoogleServiceAccount = async () => {
     const secretName = process.env.GOOGLE_SERVICE_ACCOUNT_SECRET;
 
     try {
-        const response = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+        const command = new GetSecretValueCommand({ SecretId: secretName });
+        const response = await secretsManager.send(command);
 
         if (response.SecretString) {
             return JSON.parse(response.SecretString);

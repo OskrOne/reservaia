@@ -1,6 +1,6 @@
-const AWS = require("aws-sdk");
+const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
+const dynamoDB = new DynamoDBClient();
 
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.BUSINESSES_TABLE;
 
 /**
@@ -9,14 +9,18 @@ const TABLE_NAME = process.env.BUSINESSES_TABLE;
  * @returns {Promise<Object|null>} - Business details if found, otherwise null.
  */
 const getBusinessByPhone = async (phonenumber) => {
+
     const params = {
         TableName: TABLE_NAME,
-        Key: { phonenumber },
+        Key: {
+            phonenumber: { S: phonenumber },
+        },
     };
 
     try {
-        const result = await dynamoDb.get(params).promise();
-        return result.Item || null;
+        const command = new GetItemCommand(params);
+        const response = await dynamoDB.send(command);
+        return response.Item || null;
     } catch (error) {
         console.error("❌ Error fetching business data:", error);
         throw new Error("Failed to retrieve business details");

@@ -1,6 +1,6 @@
-const AWS = require("aws-sdk");
+const { DynamoDBClient, GetItemCommand, PutItemCommand } = require("@aws-sdk/client-dynamodb");
 
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
+const dynamoDB = new DynamoDBClient({ region: process.env.AWS_REGION || "us-west-2" });
 const TABLE_NAME = process.env.THREADS_TABLE;
 
 /**
@@ -12,12 +12,15 @@ const TABLE_NAME = process.env.THREADS_TABLE;
 const getThreadId = async (to, from) => {
   const params = {
     TableName: TABLE_NAME,
-    Key: { to, from },
+    Key: {
+      to: { S: to },   // DynamoDB requires explicit type annotations
+      from: { S: from }
+    }
   };
 
   try {
-    const result = await dynamoDb.get(params).promise();
-    return result.Item ? result.Item.threadId : null;
+    const result = await dynamoDB.send(new GetItemCommand(params));
+    return result.Item ? result.Item.threadId.S : null;
   } catch (error) {
     console.error("Error retrieving threadId:", error);
     throw new Error("Failed to retrieve threadId");
@@ -34,11 +37,15 @@ const getThreadId = async (to, from) => {
 const createThreadId = async (to, from, threadId) => {
   const params = {
     TableName: TABLE_NAME,
-    Item: { to, from, threadId },
+    Item: {
+      to: { S: to },
+      from: { S: from },
+      threadId: { S: threadId }
+    }
   };
 
   try {
-    await dynamoDb.put(params).promise();
+    await dynamoDB.send(new PutItemCommand(params));
   } catch (error) {
     console.error("Error creating threadId:", error);
     throw new Error("Failed to create threadId");

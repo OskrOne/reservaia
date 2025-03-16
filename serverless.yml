@@ -13,8 +13,6 @@ provider:
     THREADS_TABLE: Threads
     BUSINESSES_TABLE: Businesses
     GOOGLE_SERVICE_ACCOUNT_SECRET: GoogleServiceAccountCredentials
-    OPENAI_API_KEY: 
-    ASSISTANT_ID: 
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -23,11 +21,16 @@ provider:
       Resource:
         - arn:aws:dynamodb:us-east-2:*:table/Threads
         - arn:aws:dynamodb:us-east-2:*:table/Businesses
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource: 
+        - arn:aws:secretsmanager:us-east-2:*:secret:GoogleServiceAccountCredentials-*
 
 functions:
   webhook:
     handler: handler.webhook
-    timeout: 60
+    timeout: 30
     events:
       - httpApi:
           path: /

@@ -1,4 +1,4 @@
-const { google } = require("googleapis");
+const { auth, calendar_v3 } = require("@googleapis/calendar");
 const moment = require("moment");
 const { transformEvent } = require("./date-format");
 const { getGoogleServiceAccount } = require("./secrets-manager");
@@ -10,11 +10,13 @@ const { getGoogleServiceAccount } = require("./secrets-manager");
 const getCalendar = async () => {
     // Google Calendar authentication using a service account
     const credentials = await getGoogleServiceAccount();
-    const auth = new google.auth.GoogleAuth({
+    
+    const calendarAuth = new auth.GoogleAuth({
         credentials,
         scopes: ["https://www.googleapis.com/auth/calendar"],
     });
-    return google.calendar({ version: "v3", auth });
+
+    return new calendar_v3.Calendar({auth: calendarAuth});
 }
 
 
@@ -118,7 +120,7 @@ const createEvent = async (eventData) => {
     try {
         const calendar = await getCalendar();
         const response = await calendar.events.insert({
-            calendarId: process.env.CALENDAR_ID, // Use an environment variable for flexibility
+            calendarId: process.env.CALENDAR_ID,
             resource: event,
         });
         console.log("✅ Event created:", response.data.htmlLink);
