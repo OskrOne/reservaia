@@ -32,30 +32,15 @@ const webhook = async (event) => {
         // Decode and parse WhatsApp message
         const whatsappData = parseBody(event.body);
 
-        /*
         const response = await openai.getAIResponse(
             whatsappData.To,
             whatsappData.From,
             whatsappData.Body
         );
-        */
-
-        const business = await getBusinessByPhone(whatsappData.To);
-        if (!business) {
-            // Business not found
-            return {
-                statusCode: 404,
-                body: JSON.stringify({ message: "Business not found" }),
-            };
-        }
-
-        console.log(business);
-
-        const availableSlots = await getAvailableSlots(business.calendarId.S, 60, 9, 18, "week");
 
         return {
             statusCode: 200,
-            body: availableSlots
+            body: response
         };
     } catch (error) {
         console.error("❌ Error handling WhatsApp message:", error);
