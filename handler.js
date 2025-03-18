@@ -1,6 +1,4 @@
 const openai = require("./ai");
-const { getBusinessByPhone } = require("./businesses");
-const { getAvailableSlots } = require("./calendar");;
 
 /**
  * Decodes the base64-encoded body from Twilio and converts it into a JSON object.

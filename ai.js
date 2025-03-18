@@ -1,5 +1,7 @@
 const { OpenAI } = require('openai');
-const { getThreadId, createThreadId } = require('./threads');
+const threads = require('./threads');
+const calendar = require('./calendar');
+const businesses = require('./businesses');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const assistantId = process.env.ASSISTANT_ID;
@@ -8,11 +10,18 @@ const getAIResponse = async (to, from, body) => {
   try {
 
     // Get or create threadID
-    let threadId = await getThreadId(to, from);
+    let threadId = await threads.getThreadId(to, from);
     if (!threadId) {
       const thread = await openai.beta.threads.create();
-      await createThreadId(to, from, thread.id);
+      await threads.createThreadId(to, from, thread.id);
       threadId = thread.id;
+
+      await openai.beta.threads.messages.create(threadId,
+        {
+          role: "assistant",
+          content: "El día de hoy es " + new Date().toLocaleDateString(),
+        }
+      );
     }
 
     console.log("Thread ID:", threadId);
@@ -37,26 +46,33 @@ const getAIResponse = async (to, from, body) => {
       const runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
 
       if (runStatus.status === "requires_action") {
-        const toolOutputs =
-          runStatus.required_action.submit_tool_outputs.tool_calls.map((toolCall) => {
-            if (toolCall.function.name === "guardar_reserva") {
 
-              console.log("Guardando reserva...");
-              console.log(JSON.stringify(toolCall, 2, null));
-
-              return {
-                tool_call_id: toolCall.id,
-                output: "reserva guardada",
-              };
-            } else if (toolCall.function.name === "consulta_espacios_disponibles") {
-              console.log(JSON.stringify(toolCall, 2, null));
-              console.log("Consultando espacios disponibles...");
-              return {
-                tool_call_id: toolCall.id,
-                output: "1PM a 8PM",
-              };
-            }
-          });
+        const toolOutputs = [];
+        for (const toolCall of runStatus.required_action.submit_tool_outputs.tool_calls) {
+          if (toolCall.function.name === "guardar_reserva") {
+            const argumentsObj = JSON.parse(toolCall.function.arguments);
+            const business = await businesses.getBusinessByPhone(to);
+            await calendar.createEvent(business.calendarId.S, argumentsObj);
+            console.log(JSON.stringify(toolCall, 2, null));
+            console.log("Guardando reserva...");
+            toolOutputs.push({
+              tool_call_id: toolCall.id,
+              output: "reserva guardada",
+            });
+          }
+          else if (toolCall.function.name === "consulta_espacios_disponibles") {
+            const argumentsObj = JSON.parse(toolCall.function.arguments);
+            const business = await businesses.getBusinessByPhone(to);
+            const availableSpots = await calendar.getAvailableSlots(business.calendarId.S, argumentsObj.event_duration, argumentsObj.start_time, argumentsObj.end_time);
+            console.log(JSON.stringify(toolCall, 2, null));
+            console.log("Consultando espacios disponibles...");
+            console.log(JSON.stringify(availableSpots, 2, null));
+            toolOutputs.push({
+              tool_call_id: toolCall.id,
+              output: JSON.stringify(availableSpots),
+            });
+          }
+        }
 
         console.log("Tool outputs:", toolOutputs);
 
