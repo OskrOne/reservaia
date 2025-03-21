@@ -58,7 +58,7 @@ const getAvailableSlots = async (calendarId, duration, startTime, endTime) => {
             // Adding time slots until the start of the event
             while (currentSlotStart.isBefore(eventStart)) {
                 const currentSlotEnd = moment(currentSlotStart).add(duration, 'minutes');
-                if (currentSlotEnd.isAfter(eventStart)) break; // No agregar slots que choquen con eventos
+                if (currentSlotEnd.isAfter(eventStart)) break; // Skip overlapping slots
                 availableSlots.push({
                     start: currentSlotStart.format(),
                     end: currentSlotEnd.format(),

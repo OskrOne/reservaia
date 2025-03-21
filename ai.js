@@ -2,6 +2,8 @@ const { OpenAI } = require('openai');
 const threads = require('./threads');
 const calendar = require('./calendar');
 const businesses = require('./businesses');
+const moment = require("moment-timezone");
+moment.tz.setDefault("America/Mexico_City"); // This is not right, we should manage any timezone
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const assistantId = process.env.ASSISTANT_ID;
@@ -15,16 +17,15 @@ const getAIResponse = async (to, from, body) => {
       const thread = await openai.beta.threads.create();
       await threads.createThreadId(to, from, thread.id);
       threadId = thread.id;
-
-      await openai.beta.threads.messages.create(threadId,
-        {
-          role: "assistant",
-          content: "El día de hoy es " + new Date().toLocaleDateString(),
-        }
-      );
     }
 
     console.log("Thread ID:", threadId);
+    await openai.beta.threads.messages.create(threadId,
+      {
+        role: "assistant",
+        content: "Hoy es" + moment(),
+      }
+    );
 
     // Enviar mensaje al thread
     await openai.beta.threads.messages.create(threadId,
