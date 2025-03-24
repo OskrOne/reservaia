@@ -1,4 +1,4 @@
-const openai = require("./ai");
+const openai = require("./src/ai");
 
 /**
  * Decodes the base64-encoded body from Twilio and converts it into a JSON object.
