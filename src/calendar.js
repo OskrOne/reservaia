@@ -1,7 +1,6 @@
 const { auth, calendar_v3 } = require("@googleapis/calendar");
 const moment = require("moment-timezone");
 moment.tz.setDefault("America/Mexico_City"); // This is not right, we should manage any timezone
-const { transformEvent } = require("./date-format");
 const { getGoogleServiceAccount } = require("./secrets-manager");
 
 /**
