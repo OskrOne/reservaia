@@ -1,4 +1,4 @@
-const openai = require("./src/ai");
+const openai = require("./ai");
 
 /**
  * Decodes the base64-encoded body from Twilio and converts it into a JSON object.
@@ -21,7 +21,7 @@ const parseBody = (base64Body) => {
     }
 };
 
-const webhook = async (event) => {
+const handler = async (event) => {
     try {
         if (!event.isBase64Encoded || !event.body) {
             throw new Error("Invalid request body");
@@ -49,6 +49,4 @@ const webhook = async (event) => {
     }
 };
 
-module.exports = { webhook };
-
-
+module.exports = { handler };

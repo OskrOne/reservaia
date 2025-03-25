@@ -5,15 +5,15 @@ const TABLE_NAME = process.env.BUSINESSES_TABLE;
 
 /**
  * Retrieves business details using the phone number.
- * @param {string} phonenumber - The phone number of the business.
+ * @param {string} assistantNumber - The phone number of the business.
  * @returns {Promise<Object|null>} - Business details if found, otherwise null.
  */
-const getBusinessByPhone = async (phonenumber) => {
+const getBusinessByPhone = async (assistantNumber) => {
 
     const params = {
         TableName: TABLE_NAME,
         Key: {
-            phonenumber: { S: phonenumber },
+            assistantNumber: { S: assistantNumber },
         },
     };
 

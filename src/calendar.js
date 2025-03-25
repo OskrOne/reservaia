@@ -28,7 +28,7 @@ const getCalendar = async () => {
  * @returns {Promise<Array>} - List of available slots.
  */
 const getAvailableSlots = async (calendarId, duration, startTime, endTime) => {
-    const startMoment = moment(startTime);
+    const startMoment = moment(startTime).minutes(0).add(duration, 'minutes');
     const endMoment = moment(endTime);
 
     try {
