@@ -19,7 +19,7 @@ const handler = async (event) => {
                     timeZone: 'America/Mexico_City'
                 })}`;
 
-            await whatsapp.sendMessage(appointment.notificationNumber, message);
+            await whatsapp.sendMessage(appointment.assistantNumber, appointment.notificationNumber, message);
 
             console.log(`Notification sent to ${appointment.notificationNumber}`);
         } catch (error) {

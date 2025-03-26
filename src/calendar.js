@@ -19,6 +19,27 @@ const getCalendar = async () => {
     return new calendar_v3.Calendar({ auth: calendarAuth });
 }
 
+const getEvents = async (calendarId, startTime, endTime) => {
+    const startMoment = moment(startTime);
+    const endMoment = moment(endTime);
+
+    try {
+        const calendar = await getCalendar();
+        const response = await calendar.events.list({
+            calendarId,
+            timeMin: startMoment.toISOString(),
+            timeMax: endMoment.toISOString(),
+            singleEvents: true,
+            orderBy: "startTime"
+        });
+
+        return response.data.items || [];
+    } catch (error) {
+        console.error("❌ Error retrieving events:", error);
+        return [];
+    }
+}
+
 /**
  * Retrieves available time slots within a specified date range.
  * @param {string} calendarId - The Google Calendar ID.
@@ -27,9 +48,13 @@ const getCalendar = async () => {
  * @param {number} endTime - End of the availability window (timestamp).
  * @returns {Promise<Array>} - List of available slots.
  */
-const getAvailableSlots = async (calendarId, duration, startTime, endTime) => {
+const getAvailableSlots = async (business, employeeName, duration, startTime, endTime) => {
     const startMoment = moment(startTime).minutes(0).add(duration, 'minutes');
     const endMoment = moment(endTime);
+
+    console.log("business", JSON.stringify(business, null, 2));
+
+    const calendarId = business.employees[0].calendarId;
 
     try {
         console.log(`Searching for available slots between ${startMoment.format("YYYY-MM-DD HH:mm")} and ${endMoment.format("YYYY-MM-DD HH:mm")}`);
@@ -111,4 +136,4 @@ const createEvent = async (calendarId, eventData) => {
 };
 
 
-module.exports = { getAvailableSlots, createEvent };
+module.exports = { getAvailableSlots, getEvents, createEvent };

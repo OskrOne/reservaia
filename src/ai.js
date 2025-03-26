@@ -1,7 +1,7 @@
 const { OpenAI } = require('openai');
 const threads = require('./threads');
 const calendar = require('./calendar');
-const businesses = require('./businesses');
+const business = require('./business');
 const moment = require("moment-timezone");
 moment.tz.setDefault("America/Mexico_City"); // This is not right, we should manage any timezone
 const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
@@ -10,12 +10,13 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const ASSISTANT_ID = process.env.ASSISTANT_ID;
 const QUEUE_URL = process.env.APPOINTMENT_CONFIRMED_QUEUE_URL;
 
-const sendNotification = async (notificationNumber, clientNumber, clientName, service, appointmentTime) => {
+const sendNotification = async (assistantNumber, notificationNumber, clientNumber, clientName, service, appointmentTime) => {
   const sqsClient = new SQSClient();
 
   const params = {
     QueueUrl: QUEUE_URL,
     MessageBody: JSON.stringify({
+      assistantNumber,
       notificationNumber,
       clientNumber,
       clientName,
@@ -79,35 +80,49 @@ const getAIResponse = async (assistantNumber, clientNumber, body) => {
 
         const toolOutputs = [];
         for (const toolCall of runStatus.required_action.submit_tool_outputs.tool_calls) {
-          if (toolCall.function.name === "guardar_reserva") {
-            const argumentsObj = JSON.parse(toolCall.function.arguments);
 
-            // Getting business by phone
-            const business = await businesses.getBusinessByPhone(assistantNumber);
+          console.log(JSON.stringify(toolCall, 2, null));
+          const argumentsObj = JSON.parse(toolCall.function.arguments);
+          const busi = await business.getBusinessByPhone(assistantNumber);
+          console.log("argumentsObj", argumentsObj);
+          if (toolCall.function.name === "guardar_reserva") {
+            const employee = busi.employees.find((employee) => employee.name === argumentsObj.employee_name);
 
             // Creating event in Google Calendar
-            await calendar.createEvent(business.calendarId.S, argumentsObj);
+            await calendar.createEvent(employee.calendarId, argumentsObj); // Aqui hay que corregir
 
             // Sending notification
-            console.log("Enviando notificación...", argumentsObj);
-            await sendNotification(business.notificationsNumber.S, clientNumber, argumentsObj.clientName, argumentsObj.summary, argumentsObj.start.dateTime);
-            
-            console.log(JSON.stringify(toolCall, 2, null));
+            await sendNotification(busi.assistantNumber, busi.notificationsNumber, clientNumber, argumentsObj.client_name, argumentsObj.summary, argumentsObj.start.dateTime);
+
             console.log("Guardando reserva...");
             toolOutputs.push({
               tool_call_id: toolCall.id,
               output: "reserva guardada",
             });
           }
-          else if (toolCall.function.name === "consulta_espacios_disponibles") {
-            const argumentsObj = JSON.parse(toolCall.function.arguments);
-            const business = await businesses.getBusinessByPhone(assistantNumber);
-            const availableSpots = await calendar.getAvailableSlots(business.calendarId.S, argumentsObj.event_duration, argumentsObj.start_time, argumentsObj.end_time);
-            console.log(JSON.stringify(toolCall, 2, null));
-            console.log(JSON.stringify(availableSpots, 2, null));
+          else if (toolCall.function.name === "consulta_reservas_confirmadas") {
+            const events = [];
+            if (argumentsObj.employee_name) { // Get events for specific employee
+              const employee = busi.employees.find((employee) => employee.name === argumentsObj.employee_name);
+              if (employee) {
+                events.push({
+                  employee_name: employee.name,
+                  events: await calendar.getEvents(employee.calendarId, argumentsObj.start_time, argumentsObj.end_time)
+                });
+              }
+            } else {
+              for (const employee of busi.employees) { // Get events for all employees
+                events.push({
+                  employee_name: employee.name,
+                  events: await calendar.getEvents(employee.calendarId, argumentsObj.start_time, argumentsObj.end_time)
+                });
+              }
+            }
+            console.log("events", JSON.stringify(events, 2, null));
+
             toolOutputs.push({
               tool_call_id: toolCall.id,
-              output: JSON.stringify(availableSpots),
+              output: JSON.stringify(events),
             });
           }
         }
