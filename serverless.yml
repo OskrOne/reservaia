@@ -11,33 +11,70 @@ provider:
   region: us-east-2
   environment:
     THREADS_TABLE: Threads
-    BUSINESSES_TABLE: Businesses
+    BUSINESS_TABLE: Business
+    APPOINTMENTS_TABLE: Appointments
+    APPOINTMENT_CONFIRMED_QUEUE_URL:
+      Ref: AppointmentConfirmedQueue
+    MESSAGES_QUEUE_URL:
+      Ref: MessagesQueue
+    # Google
     GOOGLE_SERVICE_ACCOUNT_SECRET: GoogleServiceAccountCredentials
   iamRoleStatements:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
+        - dynamodb:DeleteItem
         - dynamodb:PutItem
       Resource:
         - arn:aws:dynamodb:us-east-2:*:table/Threads
-        - arn:aws:dynamodb:us-east-2:*:table/Businesses
+        - arn:aws:dynamodb:us-east-2:*:table/Business
+        - arn:aws:dynamodb:us-east-2:*:table/Appointments
     - Effect: Allow
       Action:
         - secretsmanager:GetSecretValue
-      Resource: 
+      Resource:
         - arn:aws:secretsmanager:us-east-2:*:secret:GoogleServiceAccountCredentials-*
+    - Effect: Allow
+      Action:
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
+        - sqs:SendMessage
+      Resource:
+        - Fn::GetAtt: [MessagesQueue, Arn]
+        - Fn::GetAtt: [AppointmentConfirmedQueue, Arn]
+        
 
 functions:
+
+  # Receive message from Twilio and send it to message queue
   webhook:
-    handler: handler.webhook
-    timeout: 30
+    handler: src/handlers/webhook.handler
     events:
       - httpApi:
           path: /
           method: post
 
+  process-message:
+    handler: src/handlers/process-message.handler
+    timeout: 120
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [MessagesQueue, Arn]
+          batchSize: 1
+
+  notify-business-owner:
+    handler: src/notifications.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [AppointmentConfirmedQueue, Arn]
+          batchSize: 1
+
 resources:
   Resources:
+    # Tables
     ThreadsTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -53,19 +90,59 @@ resources:
           - AttributeName: from
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
-    BusinessesTable:
+    BusinessTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: Businesses
+        TableName: Business
         AttributeDefinitions:
-          - AttributeName: phonenumber
+          - AttributeName: assistantNumber
             AttributeType: S
         KeySchema:
-          - AttributeName: phonenumber
+          - AttributeName: assistantNumber
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+    AppointmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Appointments
+        AttributeDefinitions:
+          - AttributeName: assistantNumber
+            AttributeType: S
+          - AttributeName: clientNumber
+            AttributeType: S
+        KeySchema:
+          - AttributeName: assistantNumber
+            KeyType: HASH
+          - AttributeName: clientNumber
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+    
+    # Secrets
     GoogleServiceAccountCredentials:
       Type: AWS::SecretsManager::Secret
       Properties:
         Name: GoogleServiceAccountCredentials
         Description: "Stores Google Service Account credentials for authentication"
+    # Queues
+    MessagesQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: messages-queue.fifo
+        FifoQueue: true
+        ContentBasedDeduplication: true
+    AppointmentConfirmedQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: appointment-confirmed-queue
+        VisibilityTimeout: 30
+        MessageRetentionPeriod: 1209600 # 14 days
+        DelaySeconds: 0
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [AppointmentConfirmedDLQ, Arn]
+          maxReceiveCount: 3
+    AppointmentConfirmedDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: appointment-confirmed-dlq
+        MessageRetentionPeriod: 1209600
