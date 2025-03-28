@@ -1,4 +1,5 @@
-const openai = require("./ai");
+const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
+const QUEUE_URL = process.env.MESSAGES_QUEUE_URL;
 
 /**
  * Decodes the base64-encoded body from Twilio and converts it into a JSON object.
@@ -7,10 +8,10 @@ const openai = require("./ai");
  */
 const parseBody = (base64Body) => {
     try {
-        // Step 1: Decode from Base64
+        // Decode from Base64
         const decodedBody = Buffer.from(base64Body, "base64").toString("utf-8");
 
-        // Step 2: Parse using URLSearchParams
+        // Parse using URLSearchParams
         const params = new URLSearchParams(decodedBody);
         const parsedBody = Object.fromEntries(params.entries());
 
@@ -21,6 +22,11 @@ const parseBody = (base64Body) => {
     }
 };
 
+/**
+ * Handler
+ * @param {*} event 
+ * @returns 
+ */
 const handler = async (event) => {
     try {
         if (!event.isBase64Encoded || !event.body) {
@@ -30,18 +36,21 @@ const handler = async (event) => {
         // Decode and parse WhatsApp message
         const whatsappData = parseBody(event.body);
 
-        const response = await openai.getAIResponse(
-            whatsappData.To,
-            whatsappData.From,
-            whatsappData.Body
-        );
+        // Send message to SQS
+        const params = {
+            QueueUrl: QUEUE_URL,
+            MessageBody: JSON.stringify(whatsappData),
+            MessageGroupId: whatsappData.From
+        };
+        const sqs = new SQSClient();
+        const command = new SendMessageCommand(params);
+        await sqs.send(command);;
 
         return {
-            statusCode: 200,
-            body: response
+            statusCode: 200
         };
     } catch (error) {
-        console.error("❌ Error handling WhatsApp message:", error);
+        console.error("Error handling WhatsApp message:", error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: error.message }),

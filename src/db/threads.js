@@ -1,6 +1,6 @@
 const { DynamoDBClient, GetItemCommand, PutItemCommand } = require("@aws-sdk/client-dynamodb");
 
-const dynamoDB = new DynamoDBClient({ region: process.env.AWS_REGION || "us-west-2" });
+const dynamoDB = new DynamoDBClient();
 const TABLE_NAME = process.env.THREADS_TABLE;
 
 /**

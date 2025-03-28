@@ -2,7 +2,6 @@ const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
 const { unmarshall } = require("@aws-sdk/util-dynamodb");
 
 const dynamoDB = new DynamoDBClient();
-
 const TABLE_NAME = process.env.BUSINESS_TABLE;
 
 /**
