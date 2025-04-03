@@ -16,7 +16,6 @@ const { SQSClient, DeleteMessageCommand } = require('@aws-sdk/client-sqs');
 const QUEUE_URL = process.env.MESSAGES_QUEUE_URL;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const ASSISTANT_ID = process.env.ASSISTANT_ID;
 
 const handler = async (event) => {
     for (const record of event.Records) {
@@ -51,6 +50,10 @@ const handler = async (event) => {
             }
         }
 
+        // Get the assistant ID
+        const busi = await business.getBusinessByPhone(assistantNumber);
+        const assistantId = busi.assistantId;
+
         // Create messages, 1 for context, the other one is the real message
         await openai.beta.threads.messages.create(threadId,
             {
@@ -67,7 +70,7 @@ const handler = async (event) => {
 
         // Create a new run
         const run = await openai.beta.threads.runs.create(threadId, {
-            assistant_id: ASSISTANT_ID,
+            assistant_id: assistantId,
         });
 
         // Wait the answer
@@ -216,27 +219,28 @@ const saveEvent = async (assistantNumber, clientNumber, payload) => {
     try {
         const busi = await business.getBusinessByPhone(assistantNumber);
         const apps = await appointments.getAppointment(assistantNumber, clientNumber);
-    
+
         if (!busi || !busi.employees) {
             console.error("Business or employees not found.");
             return;
         }
-    
+
         const employee = busi.employees.find(e => e.name === payload.employee_name);
         if (!employee) {
             console.error(`Employee not found: ${payload.employee_name}`);
             return;
         }
-    
+
         payload.service_name ||= payload.summary;
-    
+
         const existingAppointments = apps?.appointments?.[payload.client_name];
         const existingAppointment = existingAppointments?.find(app => app.service === payload.service_name);
-    
+
+        let eventCalendar;
         if (existingAppointment) {
             // Update existing calendar event
             try {
-                await calendar.patchEvent(employee.calendarId, existingAppointment.eventId, payload);
+                eventCalendar = await calendar.patchEvent(employee.calendarId, existingAppointment.eventId, payload);
                 console.log(`Updated appointment for ${payload.client_name} - ${payload.service_name}`);
             } catch (err) {
                 console.error("Failed to update calendar event:", err);
@@ -244,14 +248,13 @@ const saveEvent = async (assistantNumber, clientNumber, payload) => {
             }
         } else {
             // Create new calendar event
-            let eventCalendar;
             try {
                 eventCalendar = await calendar.createEvent(employee.calendarId, payload);
             } catch (err) {
                 console.error("Failed to create calendar event:", err);
                 return;
             }
-    
+
             if (!apps?.appointments) {
                 // First appointment for this client
                 const newApps = {
@@ -263,7 +266,7 @@ const saveEvent = async (assistantNumber, clientNumber, payload) => {
                         }]
                     }
                 };
-    
+
                 try {
                     await appointments.putAppointment(assistantNumber, clientNumber, newApps);
                     console.log("Stored first appointment for client.");
@@ -279,7 +282,7 @@ const saveEvent = async (assistantNumber, clientNumber, payload) => {
                     eventId: eventCalendar.id,
                     employeeName: payload.employee_name,
                 });
-    
+
                 try {
                     await appointments.putAppointment(assistantNumber, clientNumber, apps);
                     console.log("Stored new appointment for existing client.");
@@ -289,33 +292,44 @@ const saveEvent = async (assistantNumber, clientNumber, payload) => {
                 }
             }
         }
-    
+
         // Send confirmation message
-        const message = '📅 Cita confirmada:\n\n' +
-            `*Service*: ${payload.service_name}\n` +
-            `*Client*: ${payload.client_name}\n` +
-            `*Client phone*: ${clientNumber.replace("whatsapp:", "")}\n` +
-            `*Start time*: ${new Date(payload.start.dateTime).toLocaleString('es-MX', {
+        const message = {
+            service: payload.service_name,
+            clientName: payload.client_name,
+            clientNumber: clientNumber.replace("whatsapp:", ""),
+            startTime: new Date(payload.start.dateTime).toLocaleString('es-MX', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: 'numeric', minute: '2-digit', hour12: true,
                 timeZone: 'America/Mexico_City'
-            })}\n` +
-            `*End time*: ${new Date(payload.end.dateTime).toLocaleString('es-MX', {
+            }),
+            endTime: new Date(payload.end.dateTime).toLocaleString('es-MX', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: 'numeric', minute: '2-digit', hour12: true,
                 timeZone: 'America/Mexico_City'
-            })}`;
-    
+            }),
+            eid: getEid(eventCalendar.htmlLink)
+        }
+
         try {
-            await whatsapp.sendMessage(assistantNumber, busi.notificationsNumber, message);
+            await whatsapp.sendNotificationOwner(assistantNumber, busi.notificationsNumber, message);
             console.log("Confirmation message sent.");
         } catch (err) {
             console.error("Failed to send WhatsApp message:", err);
         }
-    
+
     } catch (error) {
         console.error("Unexpected error during appointment handling:", error);
-    }    
+    }
+}
+
+const getEid = (htmlLink) => {
+    const eidStartIndex = htmlLink.indexOf('eid=') + 4;
+    let eidPart = htmlLink.substring(eidStartIndex);
+
+    // If there are other query parameters, cut at the next '&'
+    const eid = eidPart.includes('&') ? eidPart.split('&')[0] : eidPart;
+    return eid;
 }
 
 module.exports = { handler };
